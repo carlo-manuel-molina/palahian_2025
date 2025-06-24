@@ -2,7 +2,7 @@
 import { DataTypes, Model } from 'sequelize';
 import { sequelize } from '../lib/sequelize';
 
-interface UserAttributes {
+export interface UserAttributes {
   id?: number;
   name: string;
   email: string;
@@ -13,16 +13,7 @@ interface UserAttributes {
   emailVerificationExpires?: Date | null;
 }
 
-export class User extends Model<UserAttributes> implements UserAttributes {
-  public id!: number;
-  public name!: string;
-  public email!: string;
-  public passwordHash!: string;
-  public role!: 'breeder' | 'fighter' | 'seller' | 'shipper' | 'buyer';
-  public isEmailVerified!: boolean;
-  public emailVerificationToken!: string | null;
-  public emailVerificationExpires!: Date | null;
-}
+export class User extends Model<UserAttributes> {}
 
 User.init(
   {

@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import type { Sequelize } from 'sequelize';
+import type { UserAttributes } from '@/models/User';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
 
@@ -34,20 +35,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    // Check if email is verified
-    if (!user.isEmailVerified) {
+    // Type-safe access to user fields
+    const userAttrs = user as unknown as UserAttributes;
+    if (!userAttrs.isEmailVerified) {
       return NextResponse.json({ 
         error: 'Please verify your email address before logging in. Check your inbox for a verification link.' 
       }, { status: 401 });
     }
 
-    const valid = await bcrypt.compare(password, user.passwordHash);
+    const valid = await bcrypt.compare(password, userAttrs.passwordHash);
     if (!valid) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
-    return NextResponse.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+    const token = jwt.sign({ id: userAttrs.id, email: userAttrs.email, role: userAttrs.role }, JWT_SECRET, { expiresIn: '7d' });
+    return NextResponse.json({ token, user: { id: userAttrs.id, name: userAttrs.name, email: userAttrs.email, role: userAttrs.role } });
   } catch (err: unknown) {
     const error = err as Error;
     return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });

@@ -8,6 +8,7 @@ export const sequelize = new Sequelize(
   {
     host: process.env.DB_HOST || 'localhost',
     dialect: 'mysql',
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     dialectModule: require('mysql2'),
     logging: false,
   }

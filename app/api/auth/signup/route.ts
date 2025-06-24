@@ -5,6 +5,7 @@ import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import type { Sequelize } from 'sequelize';
 import { sendVerificationEmail } from '@/lib/email';
+import type { UserAttributes } from '@/models/User';
 
 let sequelize: Sequelize;
 async function getSequelize() {
@@ -57,10 +58,11 @@ export async function POST(req: NextRequest) {
       // Still create the user, but log the email failure
     }
 
+    const userAttrs = user as unknown as UserAttributes;
     return NextResponse.json(
         { 
           message: 'User created. Please check your email to verify your account.', 
-          user: { id: user.id, name: user.name, email: user.email, role: user.role },
+          user: { id: userAttrs.id, name: userAttrs.name, email: userAttrs.email, role: userAttrs.role },
           emailSent: emailResult.success
         },
         { status: 201 }
