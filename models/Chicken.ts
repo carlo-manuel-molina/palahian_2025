@@ -1,27 +1,41 @@
 // models/Chicken.ts
-import { DataTypes, Model } from 'sequelize';
+import { DataTypes, Model, Optional } from 'sequelize';
 import { sequelize } from '../lib/sequelize';
 import { User } from './User';
+import { Farm } from './Farm';
+import { Bloodline } from './Bloodline';
 
-export class Chicken extends Model {
-  public id!: number;
-  public breederId!: number;
-  public legbandNo!: string;
-  public wingbandNo!: string;
-  public bloodline!: string;
-  public bloodlineComposition!: string;
-  public pictures!: string[];
-  public description!: string;
-  public fightRecord!: string;
-  public fightVideos!: string[];
-  public forSale!: boolean;
-  public price?: number;
+export interface ChickenAttributes {
+  chickenId?: number;
+  breederId: number;
+  farmId?: number;
+  bloodlineId?: number;
+  status?: string;
+  fatherId?: number | null;
+  motherId?: number | null;
+  legbandNo: string;
+  wingbandNo: string;
+  bloodline: string;
+  bloodlineComposition: string;
+  pictures?: string[];
+  description?: string;
+  fightRecord?: string;
+  fightVideos?: string[];
+  forSale?: boolean;
+  price?: number;
 }
+
+export class Chicken extends Model<ChickenAttributes, Optional<ChickenAttributes, 'chickenId'>> {}
 
 Chicken.init(
   {
-    id: { type: DataTypes.INTEGER.UNSIGNED, autoIncrement: true, primaryKey: true },
+    chickenId: { type: DataTypes.INTEGER.UNSIGNED, autoIncrement: true, primaryKey: true },
     breederId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
+    farmId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
+    bloodlineId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
+    status: { type: DataTypes.STRING, allowNull: false, defaultValue: 'alive' },
+    fatherId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
+    motherId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
     legbandNo: { type: DataTypes.STRING, allowNull: false },
     wingbandNo: { type: DataTypes.STRING, allowNull: false },
     bloodline: { type: DataTypes.STRING, allowNull: false },
@@ -35,7 +49,3 @@ Chicken.init(
   },
   { sequelize, modelName: 'chicken' }
 );
-
-// Associations
-User.hasMany(Chicken, { foreignKey: 'breederId' });
-Chicken.belongsTo(User, { foreignKey: 'breederId' });

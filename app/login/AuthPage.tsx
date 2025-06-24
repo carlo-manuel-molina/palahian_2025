@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Cookies from 'js-cookie';
 
 const roles = ["breeder", "fighter", "seller", "shipper", "buyer"];
 
@@ -27,6 +28,15 @@ export default function AuthPage() {
       window.history.replaceState({}, '', newUrl.toString());
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    // If user is already logged in, redirect to dashboard or last visited page
+    const token = Cookies.get('token');
+    const lastPage = localStorage.getItem('lastPage');
+    if (token) {
+      router.replace(lastPage || '/dashboard');
+    }
+  }, [router]);
 
   const [mode, setMode] = useState<"login" | "signup">("login");
   // Login state
@@ -57,8 +67,9 @@ export default function AuthPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Login failed");
-      localStorage.setItem("token", data.token);
-      router.push("/");
+      // No need to store token in localStorage, it's in cookie now
+      const lastPage = localStorage.getItem('lastPage');
+      router.replace(lastPage || '/dashboard');
     } catch (err: unknown) {
       const error = err as Error;
       setLoginError(error.message);

@@ -1,7 +1,5 @@
 // scripts/sync.ts
-import { sequelize } from '../lib/sequelize';
-import { User } from '../models/User';
-import { Chicken } from '../models/Chicken';
+import { sequelize, User, Chicken } from '../models';
 
 (async () => {
   await sequelize.sync({ alter: true }); // or { force: true } for dev only
