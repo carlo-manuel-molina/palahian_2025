@@ -2,13 +2,20 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-const roles = ["breeder", "fighter", "seller", "shipper", "buyer"];
+const roles = [
+  { value: "breeder", label: "Breeder", description: "Can breed, sell, and buy chickens" },
+  { value: "fighter", label: "Fighter", description: "Can fight, sell, and buy chickens" },
+  { value: "seller", label: "Seller", description: "Can sell chickens" },
+  { value: "buyer", label: "Buyer", description: "Can buy chickens" },
+  { value: "shipper", label: "Shipper", description: "Can transport chickens" },
+  { value: "gaffer", label: "Gaffer", description: "Can manage fights and events" }
+];
 
 export default function SignupPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState(roles[0]);
+  const [role, setRole] = useState(roles[0].value);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
@@ -34,6 +41,8 @@ export default function SignupPage() {
       setLoading(false);
     }
   };
+
+  const selectedRole = roles.find(r => r.value === role);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100">
@@ -82,9 +91,12 @@ export default function SignupPage() {
             required
           >
             {roles.map(r => (
-              <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
+              <option key={r.value} value={r.value}>{r.label}</option>
             ))}
           </select>
+          {selectedRole && (
+            <p className="mt-2 text-sm text-gray-600">{selectedRole.description}</p>
+          )}
         </div>
         <button
           type="submit"

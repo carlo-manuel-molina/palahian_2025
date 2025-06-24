@@ -5,7 +5,7 @@ import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import type { Sequelize } from 'sequelize';
 import { sendVerificationEmail } from '@/lib/email';
-import type { UserAttributes } from '@/models/User';
+import type { UserAttributes } from '@/models';
 
 let sequelize: Sequelize;
 async function getSequelize() {
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
       await sequelize.sync();
     }
 
-    const { User } = await import('@/models/User'); // ✅ Lazy import
+    const { User } = await import('@/models'); // ✅ Lazy import
     const existing = await User.findOne({ where: { email } });
     if (existing) {
       return NextResponse.json({ error: 'Email already in use' }, { status: 409 });
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
         { 
           message: 'User created. Please check your email to verify your account.', 
-          user: { id: userAttrs.id, name: userAttrs.name, email: userAttrs.email, role: userAttrs.role },
+          user: { userId: userAttrs.userId, name: userAttrs.name, email: userAttrs.email, role: userAttrs.role },
           emailSent: emailResult.success
         },
         { status: 201 }

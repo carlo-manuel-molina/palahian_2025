@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Cookies from 'js-cookie';
 
 const roles = ["breeder", "fighter", "seller", "shipper", "buyer"];
 
@@ -27,6 +28,15 @@ export default function AuthPage() {
       window.history.replaceState({}, '', newUrl.toString());
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    // If user is already logged in, redirect to dashboard or last visited page
+    const token = Cookies.get('token');
+    const lastPage = localStorage.getItem('lastPage');
+    if (token) {
+      router.replace(lastPage || '/dashboard');
+    }
+  }, [router]);
 
   const [mode, setMode] = useState<"login" | "signup">("login");
   // Login state
@@ -57,8 +67,9 @@ export default function AuthPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Login failed");
-      localStorage.setItem("token", data.token);
-      router.push("/");
+      // No need to store token in localStorage, it's in cookie now
+      const lastPage = localStorage.getItem('lastPage');
+      router.replace(lastPage || '/dashboard');
     } catch (err: unknown) {
       const error = err as Error;
       setLoginError(error.message);
@@ -133,7 +144,6 @@ export default function AuthPage() {
         </div>
         {mode === "login" ? (
           <form onSubmit={handleLogin} className="w-full">
-            <h2 className="text-xl font-bold mb-6 text-center text-green-900">Login</h2>
             {loginError && <div className="mb-4 text-red-900 bg-red-200 rounded p-2 text-center">{loginError}</div>}
             {loginSuccess && <div className="mb-4 text-green-900 bg-green-200 rounded p-2 text-center">{loginSuccess}</div>}
             <div className="mb-4">
@@ -166,7 +176,6 @@ export default function AuthPage() {
           </form>
         ) : (
           <form onSubmit={handleSignup} className="w-full">
-            <h2 className="text-xl font-bold mb-6 text-center text-green-900">Register</h2>
             {signupError && <div className="mb-4 text-red-900 bg-red-200 rounded p-2 text-center">{signupError}</div>}
             {signupSuccess && <div className="mb-4 text-green-900 bg-green-200 rounded p-2 text-center">{signupSuccess}</div>}
             <div className="mb-4">

@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import type { Sequelize } from 'sequelize';
-import type { UserAttributes } from '@/models/User';
+import type { UserAttributes } from '@/models';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
 
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
       await sequelize.sync();
     }
 
-    const { User } = await import('@/models/User'); // ✅ Lazy import
+    const { User } = await import('@/models'); // ✅ Lazy import
     const user = await User.findOne({ where: { email } });
     if (!user) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
@@ -48,8 +48,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    const token = jwt.sign({ id: userAttrs.id, email: userAttrs.email, role: userAttrs.role }, JWT_SECRET, { expiresIn: '7d' });
-    return NextResponse.json({ token, user: { id: userAttrs.id, name: userAttrs.name, email: userAttrs.email, role: userAttrs.role } });
+    const token = jwt.sign({ userId: userAttrs.userId, email: userAttrs.email, role: userAttrs.role }, JWT_SECRET, { expiresIn: '5m' });
+    const response = NextResponse.json({ user: { userId: userAttrs.userId, name: userAttrs.name, email: userAttrs.email, role: userAttrs.role } });
+    response.cookies.set('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 300, // 5 minutes
+    });
+
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; email: string; role: string };
+
+    return response;
   } catch (err: unknown) {
     const error = err as Error;
     return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
