@@ -1,10 +1,20 @@
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
-import { User } from '@/models/User';
-import { sequelize } from '@/lib/sequelize';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import type { Sequelize } from 'sequelize';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+
+let sequelize: Sequelize;
+async function getSequelize() {
+  if (!sequelize) {
+    const { sequelize: seq } = await import('@/lib/sequelize');
+    sequelize = seq;
+  }
+  return sequelize;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,11 +23,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing email or password' }, { status: 400 });
     }
 
-    await sequelize.sync(); // Ensure DB is ready (optional, for dev)
+    const sequelize = await getSequelize();
+    if (process.env.NODE_ENV !== 'production') {
+      await sequelize.sync();
+    }
 
+    const { User } = await import('@/models/User'); // ✅ Lazy import
     const user = await User.findOne({ where: { email } });
     if (!user) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+    }
+
+    // Check if email is verified
+    if (!user.isEmailVerified) {
+      return NextResponse.json({ 
+        error: 'Please verify your email address before logging in. Check your inbox for a verification link.' 
+      }, { status: 401 });
     }
 
     const valid = await bcrypt.compare(password, user.passwordHash);
@@ -31,4 +52,4 @@ export async function POST(req: NextRequest) {
     const error = err as Error;
     return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
   }
-} 
+}

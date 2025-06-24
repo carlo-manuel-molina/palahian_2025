@@ -9,10 +9,12 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@types/nodemailer": "^6.4.17",
     "bcrypt": "^6.0.0",
     "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.14.1",
     "next": "15.3.3",
+    "nodemailer": "^7.0.3",
     "pg-hstore": "^2.3.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

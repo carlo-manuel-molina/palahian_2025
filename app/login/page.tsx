@@ -1,10 +1,13 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 const roles = ["breeder", "fighter", "seller", "shipper", "buyer"];
 
 export default function AuthPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
   useEffect(() => {
     const link = document.createElement("link");
     link.href = "https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap";
@@ -13,12 +16,25 @@ export default function AuthPage() {
     return () => { document.head.removeChild(link); };
   }, []);
 
+  // Check for email verification success
+  useEffect(() => {
+    const verified = searchParams.get('verified');
+    if (verified === 'true') {
+      setLoginSuccess("Email verified successfully! You can now log in.");
+      // Clear the URL parameter
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.delete('verified');
+      window.history.replaceState({}, '', newUrl.toString());
+    }
+  }, [searchParams]);
+
   const [mode, setMode] = useState<"login" | "signup">("login");
   // Login state
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState("");
+  const [loginSuccess, setLoginSuccess] = useState("");
   // Signup state
   const [signupName, setSignupName] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
@@ -27,12 +43,12 @@ export default function AuthPage() {
   const [signupLoading, setSignupLoading] = useState(false);
   const [signupError, setSignupError] = useState("");
   const [signupSuccess, setSignupSuccess] = useState("");
-  const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginLoading(true);
     setLoginError("");
+    setLoginSuccess("");
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
@@ -64,7 +80,7 @@ export default function AuthPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Signup failed");
-      setSignupSuccess("Account created! You can now log in.");
+      setSignupSuccess("Account created! Please check your email to verify your account before logging in.");
       setMode("login");
       setSignupName("");
       setSignupEmail("");
@@ -119,6 +135,7 @@ export default function AuthPage() {
           <form onSubmit={handleLogin} className="w-full">
             <h2 className="text-xl font-bold mb-6 text-center text-green-900">Login</h2>
             {loginError && <div className="mb-4 text-red-900 bg-red-200 rounded p-2 text-center">{loginError}</div>}
+            {loginSuccess && <div className="mb-4 text-green-900 bg-green-200 rounded p-2 text-center">{loginSuccess}</div>}
             <div className="mb-4">
               <label className="block mb-1 font-medium text-green-900">Email</label>
               <input
@@ -200,7 +217,7 @@ export default function AuthPage() {
               className="w-full bg-green-700 text-white py-2 rounded font-semibold hover:bg-green-800 transition"
               disabled={signupLoading}
             >
-              {signupLoading ? "Signing up..." : "Sign Up"}
+              {signupLoading ? "Creating account..." : "Register"}
             </button>
           </form>
         )}
