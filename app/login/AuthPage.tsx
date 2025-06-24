@@ -144,7 +144,6 @@ export default function AuthPage() {
         </div>
         {mode === "login" ? (
           <form onSubmit={handleLogin} className="w-full">
-            <h2 className="text-xl font-bold mb-6 text-center text-green-900">Login</h2>
             {loginError && <div className="mb-4 text-red-900 bg-red-200 rounded p-2 text-center">{loginError}</div>}
             {loginSuccess && <div className="mb-4 text-green-900 bg-green-200 rounded p-2 text-center">{loginSuccess}</div>}
             <div className="mb-4">
@@ -177,7 +176,6 @@ export default function AuthPage() {
           </form>
         ) : (
           <form onSubmit={handleSignup} className="w-full">
-            <h2 className="text-xl font-bold mb-6 text-center text-green-900">Register</h2>
             {signupError && <div className="mb-4 text-red-900 bg-red-200 rounded p-2 text-center">{signupError}</div>}
             {signupSuccess && <div className="mb-4 text-green-900 bg-green-200 rounded p-2 text-center">{signupSuccess}</div>}
             <div className="mb-4">

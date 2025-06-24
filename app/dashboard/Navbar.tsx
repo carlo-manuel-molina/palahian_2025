@@ -1,14 +1,15 @@
+"use client";
 import { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { createPortal } from 'react-dom';
+import { useRouter, usePathname } from 'next/navigation';
+import { Menu } from '@headlessui/react';
+import Link from 'next/link';
 // import { FaBars } from 'react-icons/fa'; // Uncomment if react-icons is installed
 
 export default function Navbar({ onSectionSelect }: { onSectionSelect?: (section: string) => void }) {
   const [open, setOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
 
   // Close dropdowns on outside click
@@ -17,54 +18,96 @@ export default function Navbar({ onSectionSelect }: { onSectionSelect?: (section
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
     }
-    if (open || menuOpen) document.addEventListener('mousedown', handleClick);
+    if (open) document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }, [open, menuOpen]);
+  }, [open]);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Helper to get the button position for portal placement
-  function getMenuButtonRect(ref: React.RefObject<HTMLDivElement | null>) {
-    if (!ref.current) return { top: 0, left: 0, width: 0 };
-    const rect = ref.current.getBoundingClientRect();
-    return { top: rect.bottom + window.scrollY, left: rect.right + window.scrollX - 224, width: 224 };
-  }
-
   return (
-    <nav className="w-full bg-green-50/80 backdrop-blur-md border-b border-green-200 px-2 sm:px-6 py-1 sm:py-2 flex items-center justify-between relative">
+    <nav className="w-full bg-green-50/80 backdrop-blur-md border-b border-green-200 px-2 sm:px-6 py-1 sm:py-2 flex items-center justify-between relative z-50">
       {/* Welcome message */}
       <div className="flex-1 text-left"></div>
-      {/* Burger menu icon */}
-      <div className="relative mr-2" ref={menuRef}>
-        <button
-          className="flex items-center justify-center w-10 h-10 rounded-full bg-green-200 hover:bg-green-300 focus:outline-none focus:ring-2 focus:ring-green-400"
-          onClick={() => setMenuOpen((v) => !v)}
-          aria-label="Main menu"
-        >
-          {/* <FaBars className="w-6 h-6 text-green-900" /> */}
-          <svg className="w-6 h-6 text-green-900" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
-        {mounted && menuOpen && createPortal(
-          <div
-            className="fixed bg-white border border-green-200 rounded-lg shadow-lg z-[9999] w-56"
-            style={getMenuButtonRect(menuRef)}
-          >
-            <button className="block w-full text-left px-4 py-2 text-green-900 hover:bg-green-100" onClick={() => { setMenuOpen(false); if (onSectionSelect) onSectionSelect('bloodlines'); }}>Bloodlines</button>
-            <button className="block w-full text-left px-4 py-2 text-green-900 hover:bg-green-100 border-t border-green-100" onClick={() => { setMenuOpen(false); if (onSectionSelect) onSectionSelect('breeding'); }}>Breeding Materials</button>
-            <button className="block w-full text-left px-4 py-2 text-green-900 hover:bg-green-100 border-t border-green-100" onClick={() => { setMenuOpen(false); if (onSectionSelect) onSectionSelect('battle'); }}>Battle Crosses</button>
-            <button className="block w-full text-left px-4 py-2 text-green-900 hover:bg-green-100 border-t border-green-100" onClick={() => { setMenuOpen(false); if (onSectionSelect) onSectionSelect('sale'); }}>Available For Sale</button>
-          </div>,
-          document.body
-        )}
+      
+      {/* Burger menu icon with Headless UI Menu */}
+      <div className="relative mr-2">
+        <Menu as="div" className="relative inline-block text-left">
+          <Menu.Button className="flex items-center justify-center w-10 h-10 rounded-full bg-green-200 hover:bg-green-300 focus:outline-none focus:ring-2 focus:ring-green-400">
+            <svg className="w-6 h-6 text-green-900" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </Menu.Button>
+
+          <Menu.Items className="absolute right-0 mt-2 w-56 origin-top-right bg-white border border-green-200 rounded-lg shadow-lg focus:outline-none z-50">
+            <div className="py-1">
+              <Menu.Item>
+                {({ active }) => (
+                  <Link
+                    href="/dashboard/bloodlines"
+                    className={`${
+                      active ? 'bg-green-100 text-green-900' : 'text-green-900'
+                    } block px-4 py-2 text-sm`}
+                  >
+                    Bloodlines
+                  </Link>
+                )}
+              </Menu.Item>
+              <Menu.Item>
+                {({ active }) => (
+                  <Link
+                    href="/dashboard/breeding"
+                    className={`${
+                      active ? 'bg-green-100 text-green-900' : 'text-green-900'
+                    } block px-4 py-2 text-sm border-t border-green-100`}
+                  >
+                    Breeding Materials
+                  </Link>
+                )}
+              </Menu.Item>
+              <Menu.Item>
+                {({ active }) => (
+                  <Link
+                    href="/dashboard/battle"
+                    className={`${
+                      active ? 'bg-green-100 text-green-900' : 'text-green-900'
+                    } block px-4 py-2 text-sm border-t border-green-100`}
+                  >
+                    Battle Crosses
+                  </Link>
+                )}
+              </Menu.Item>
+              <Menu.Item>
+                {({ active }) => (
+                  <Link
+                    href="/dashboard/sale"
+                    className={`${
+                      active ? 'bg-green-100 text-green-900' : 'text-green-900'
+                    } block px-4 py-2 text-sm border-t border-green-100`}
+                  >
+                    Available For Sale
+                  </Link>
+                )}
+              </Menu.Item>
+              <Menu.Item>
+                {({ active }) => (
+                  <Link
+                    href="/search"
+                    className={`${
+                      active ? 'bg-green-100 text-green-900' : 'text-green-900'
+                    } block px-4 py-2 text-sm border-t border-green-100`}
+                  >
+                    Search
+                  </Link>
+                )}
+              </Menu.Item>
+            </div>
+          </Menu.Items>
+        </Menu>
       </div>
+
       {/* User icon and dropdown */}
       <div className="relative" ref={dropdownRef}>
         <button
@@ -77,10 +120,9 @@ export default function Navbar({ onSectionSelect }: { onSectionSelect?: (section
             <path d="M4 20c0-4 8-4 8-4s8 0 8 4" />
           </svg>
         </button>
-        {mounted && open && createPortal(
+        {mounted && open && (
           <div
-            className="fixed bg-white border border-green-200 rounded-lg shadow-lg z-[9999] w-44"
-            style={getMenuButtonRect(dropdownRef)}
+            className="absolute right-0 mt-2 w-44 bg-white border border-green-200 rounded-lg shadow-lg z-50"
           >
             <button
               className="block w-full text-left px-4 py-2 text-green-900 hover:bg-green-100"
@@ -94,8 +136,7 @@ export default function Navbar({ onSectionSelect }: { onSectionSelect?: (section
             >
               Logout
             </button>
-          </div>,
-          document.body
+          </div>
         )}
       </div>
     </nav>

@@ -6,23 +6,7 @@ import Navbar from './Navbar';
 import FarmDetailsCard from './BreederDetailsCard';
 import FarmBanner from './FarmBanner';
 
-type Farm = {
-  name: string;
-  owner: string;
-  region: string;
-  province: string;
-  city: string;
-  barangay: string;
-  street: string;
-  mapPin?: string;
-  email: string;
-  description?: string;
-  bannerUrl?: string;
-  avatarUrl?: string;
-  [key: string]: any; // for any extra fields
-};
-
-export default function DashboardPage() {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<{ id: number; name: string; email: string; role: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [farm, setFarm] = useState<any>(null);
@@ -78,13 +62,6 @@ export default function DashboardPage() {
     }
   }, [farmError, router]);
 
-  useEffect(() => {
-    // Redirect to /dashboard/sale by default
-    if (window.location.pathname === '/dashboard') {
-      router.replace('/dashboard/sale');
-    }
-  }, [router]);
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -123,14 +100,15 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-green-50 flex flex-col">
       <Header />
       <Navbar />
-      <main className="flex flex-col items-center flex-1 w-full px-2 sm:px-4 py-4 sm:py-8 z-0">
-        <FarmBanner
-          userName={user.name}
-          farmName={farm?.name || 'Your Farm'}
-          bannerUrl={farm?.bannerUrl}
-          onBannerChange={(url) => setFarm((farm: Farm) => farm ? { ...farm, bannerUrl: url } : farm)}
-        />
-        <div className="w-full max-w-xl mx-auto mt-6 z-0">
+      <FarmBanner
+        userName={user.name}
+        farmName={farm?.name || 'Your Farm'}
+        bannerUrl={farm?.bannerUrl}
+        onBannerChange={(url) => setFarm((farm: any) => farm ? { ...farm, bannerUrl: url } : farm)}
+      />
+      <main className="flex flex-col items-center flex-1 w-full px-2 sm:px-4 py-4 sm:py-8">
+        <div className="w-full mt-0 mb-6">{children}</div>
+        <div className="w-full max-w-xl mx-auto mt-6">
           {farm ? (
             <FarmDetailsCard farm={farm} />
           ) : (
