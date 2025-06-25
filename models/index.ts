@@ -3,6 +3,7 @@ import { User } from './User';
 import { Farm } from './Farm';
 import { Bloodline } from './Bloodline';
 import { Chicken } from './Chicken';
+import { Stable } from './Stable';
 
 // Re-export types
 export type { UserAttributes } from './User';
@@ -10,6 +11,9 @@ export type { UserAttributes } from './User';
 // Associations
 User.hasOne(Farm, { foreignKey: 'userId' });
 Farm.belongsTo(User, { foreignKey: 'userId' });
+
+User.hasOne(Stable, { foreignKey: 'userId' });
+Stable.belongsTo(User, { foreignKey: 'userId' });
 
 Farm.hasMany(Bloodline, { foreignKey: 'farmId' });
 Bloodline.belongsTo(Farm, { foreignKey: 'farmId' });
@@ -29,4 +33,4 @@ Chicken.belongsTo(Chicken, { as: 'mother', foreignKey: 'motherId' });
 Chicken.hasMany(Chicken, { as: 'childrenAsFather', foreignKey: 'fatherId' });
 Chicken.hasMany(Chicken, { as: 'childrenAsMother', foreignKey: 'motherId' });
 
-export { sequelize, User, Farm, Bloodline, Chicken }; 
+export { sequelize, User, Farm, Bloodline, Chicken, Stable }; 

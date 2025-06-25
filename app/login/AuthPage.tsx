@@ -69,7 +69,13 @@ export default function AuthPage() {
       if (!res.ok) throw new Error(data.error || "Login failed");
       // No need to store token in localStorage, it's in cookie now
       const lastPage = localStorage.getItem('lastPage');
-      router.replace(lastPage || '/dashboard');
+      if (data.user && data.user.role === 'fighter') {
+        router.replace('/stable');
+      } else if (data.user && data.user.role === 'breeder') {
+        router.replace('/dashboard');
+      } else {
+        router.replace(lastPage || '/dashboard');
+      }
     } catch (err: unknown) {
       const error = err as Error;
       setLoginError(error.message);
@@ -91,8 +97,8 @@ export default function AuthPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Signup failed");
-      setSignupSuccess("Account created! Please check your email to verify your account before logging in.");
-      setMode("login");
+      setSignupSuccess("Account created successfully! Please check your email inbox and click the verification link to activate your account. You can then log in.");
+      // Clear form fields but stay on registration form
       setSignupName("");
       setSignupEmail("");
       setSignupPassword("");
@@ -177,7 +183,12 @@ export default function AuthPage() {
         ) : (
           <form onSubmit={handleSignup} className="w-full">
             {signupError && <div className="mb-4 text-red-900 bg-red-200 rounded p-2 text-center">{signupError}</div>}
-            {signupSuccess && <div className="mb-4 text-green-900 bg-green-200 rounded p-2 text-center">{signupSuccess}</div>}
+            {signupSuccess && (
+              <div className="mb-4 text-green-900 bg-green-200 rounded p-3 text-center border border-green-300">
+                <div className="font-semibold mb-2">✓ Account Created Successfully!</div>
+                <div className="text-sm">{signupSuccess}</div>
+              </div>
+            )}
             <div className="mb-4">
               <label className="block mb-1 font-medium text-green-900">Name</label>
               <input
