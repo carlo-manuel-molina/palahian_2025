@@ -17,6 +17,17 @@ async function getSequelize() {
   return sequelize;
 }
 
+function getUserFromToken(token: string) {
+  try {
+    return jwt.verify(token, JWT_SECRET) as { userId: number; email: string; role: string };
+  } catch (err: any) {
+    if (process.env.NODE_ENV === 'development' && err.name === 'TokenExpiredError') {
+      return jwt.decode(token) as { userId: number; email: string; role: string };
+    }
+    throw err;
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { email, password } = await req.json();
@@ -57,8 +68,6 @@ export async function POST(req: NextRequest) {
       path: '/',
       maxAge: 300, // 5 minutes
     });
-
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; email: string; role: string };
 
     return response;
   } catch (err: unknown) {

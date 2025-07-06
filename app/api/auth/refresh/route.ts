@@ -6,6 +6,17 @@ const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
 const JWT_COOKIE_NAME = 'token';
 const JWT_EXPIRES_IN = 60 * 60; // 1 hour (in seconds)
 
+function getUserFromToken(token: string) {
+  try {
+    return jwt.verify(token, JWT_SECRET);
+  } catch (err: any) {
+    if (process.env.NODE_ENV === 'development' && err.name === 'TokenExpiredError') {
+      return jwt.decode(token);
+    }
+    throw err;
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     // Get token from cookie
@@ -16,7 +27,7 @@ export async function POST(req: NextRequest) {
 
     let decoded;
     try {
-      decoded = jwt.verify(token, JWT_SECRET);
+      decoded = getUserFromToken(token);
     } catch {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
@@ -35,7 +46,7 @@ export async function POST(req: NextRequest) {
       secure: process.env.NODE_ENV === 'production',
     }));
     return res;
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 } 

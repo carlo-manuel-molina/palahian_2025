@@ -5,11 +5,22 @@ import '@/models';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
 
+function getUserFromToken(token: string) {
+  try {
+    return jwt.verify(token, JWT_SECRET) as { userId: number; email: string; role: string };
+  } catch (err: any) {
+    if (process.env.NODE_ENV === 'development' && err.name === 'TokenExpiredError') {
+      return jwt.decode(token) as { userId: number; email: string; role: string };
+    }
+    throw err;
+  }
+}
+
 async function getUserFromRequest(request: NextRequest) {
   const token = request.cookies.get('token')?.value;
   if (!token) return null;
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; email: string; role: string };
+    const decoded = getUserFromToken(token);
     const user = await User.findByPk(decoded.userId);
     return user;
   } catch {
@@ -30,7 +41,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Try to find the stable for this user
-    let stable = await Stable.findOne({ where: { userId: userAttrs.userId } });
+    const stable = await Stable.findOne({ where: { userId: userAttrs.userId } });
     if (!stable) {
       return NextResponse.json({ needsSetup: true });
     }

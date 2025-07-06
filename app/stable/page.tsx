@@ -105,18 +105,160 @@ function StableCreateForm({ onCreated }: { onCreated: () => void }) {
   const [form, setForm] = useState({
     name: '',
     region: '',
+    regionCode: '',
     province: '',
+    provinceCode: '',
     city: '',
+    cityCode: '',
     barangay: '',
+    barangayCode: '',
     street: '',
     mapPin: '',
     description: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  // Address data states
+  const [regions, setRegions] = useState<Array<{ code: string; name: string; regionName: string }>>([]);
+  const [provinces, setProvinces] = useState<Array<{ code: string; name: string; regionCode: string; regionName: string }>>([]);
+  const [cities, setCities] = useState<Array<{ code: string; name: string; provinceCode: string; provinceName: string; regionCode: string; regionName: string }>>([]);
+  const [barangays, setBarangays] = useState<Array<{ code: string; name: string; cityCode: string; cityName: string; provinceCode: string; provinceName: string; regionCode: string; regionName: string }>>([]);
+  
+  // Loading states for dropdowns
+  const [loadingRegions, setLoadingRegions] = useState(true);
+  const [loadingProvinces, setLoadingProvinces] = useState(false);
+  const [loadingCities, setLoadingCities] = useState(false);
+  const [loadingBarangays, setLoadingBarangays] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setForm(f => ({ ...f, [e.target.name]: e.target.value }));
+  // Load regions on component mount
+  useEffect(() => {
+    fetchRegions();
+  }, []);
+
+  const fetchRegions = async () => {
+    try {
+      setLoadingRegions(true);
+      const response = await fetch('/api/addresses/regions');
+      if (!response.ok) throw new Error('Failed to fetch regions');
+      const data = await response.json();
+      setRegions(data.regions || []);
+    } catch (err) {
+      setError('Failed to load regions');
+      console.error('Error fetching regions:', err);
+    } finally {
+      setLoadingRegions(false);
+    }
+  };
+
+  const fetchProvinces = async (regionCode: string) => {
+    try {
+      setLoadingProvinces(true);
+      const response = await fetch(`/api/addresses/provinces?regionCode=${regionCode}`);
+      if (!response.ok) throw new Error('Failed to fetch provinces');
+      const data = await response.json();
+      setProvinces(data.provinces || []);
+    } catch (err) {
+      setError('Failed to load provinces');
+      console.error('Error fetching provinces:', err);
+    } finally {
+      setLoadingProvinces(false);
+    }
+  };
+
+  const fetchCities = async (provinceCode: string) => {
+    try {
+      setLoadingCities(true);
+      console.log('Frontend: Fetching cities for province:', provinceCode);
+      const response = await fetch(`/api/addresses/cities?provinceCode=${provinceCode}`);
+      if (!response.ok) throw new Error('Failed to fetch cities');
+      const data = await response.json();
+      console.log('Frontend: Cities API response:', data);
+      setCities(data.cities || []);
+    } catch (err) {
+      setError('Failed to load cities');
+      console.error('Frontend: Error fetching cities:', err);
+    } finally {
+      setLoadingCities(false);
+    }
+  };
+
+  const fetchBarangays = async (cityCode: string) => {
+    try {
+      setLoadingBarangays(true);
+      const response = await fetch(`/api/addresses/barangays?cityCode=${cityCode}`);
+      if (!response.ok) throw new Error('Failed to fetch barangays');
+      const data = await response.json();
+      setBarangays(data.barangays || []);
+    } catch (err) {
+      setError('Failed to load barangays');
+      console.error('Error fetching barangays:', err);
+    } finally {
+      setLoadingBarangays(false);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setForm(f => ({ ...f, [name]: value }));
+    
+    // Handle cascading dropdowns
+    if (name === 'regionCode') {
+      const selectedRegion = regions.find(r => r.code === value);
+      setForm(f => ({ 
+        ...f, 
+        regionCode: value,
+        region: selectedRegion?.name || '',
+        provinceCode: '',
+        province: '',
+        cityCode: '',
+        city: '',
+        barangayCode: '',
+        barangay: ''
+      }));
+      setProvinces([]);
+      setCities([]);
+      setBarangays([]);
+      if (value) fetchProvinces(value);
+    }
+    
+    if (name === 'provinceCode') {
+      const selectedProvince = provinces.find(p => p.code === value);
+      setForm(f => ({ 
+        ...f, 
+        provinceCode: value,
+        province: selectedProvince?.name || '',
+        cityCode: '',
+        city: '',
+        barangayCode: '',
+        barangay: ''
+      }));
+      setCities([]);
+      setBarangays([]);
+      if (value) fetchCities(value);
+    }
+    
+    if (name === 'cityCode') {
+      const selectedCity = cities.find(c => c.code === value);
+      setForm(f => ({ 
+        ...f, 
+        cityCode: value,
+        city: selectedCity?.name || '',
+        barangayCode: '',
+        barangay: ''
+      }));
+      setBarangays([]);
+      if (value) fetchBarangays(value);
+    }
+    
+    if (name === 'barangayCode') {
+      const selectedBarangay = barangays.find(b => b.code === value);
+      setForm(f => ({ 
+        ...f, 
+        barangayCode: value,
+        barangay: selectedBarangay?.name || ''
+      }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -124,10 +266,26 @@ function StableCreateForm({ onCreated }: { onCreated: () => void }) {
     setLoading(true);
     setError('');
     try {
+      // Prepare the data for submission (keep both codes and names for compatibility)
+      const submitData = {
+        name: form.name,
+        region: form.region,
+        regionCode: form.regionCode,
+        province: form.province,
+        provinceCode: form.provinceCode,
+        city: form.city,
+        cityCode: form.cityCode,
+        barangay: form.barangay,
+        barangayCode: form.barangayCode,
+        street: form.street,
+        mapPin: form.mapPin,
+        description: form.description,
+      };
+      
       const res = await fetch('/api/stable', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(submitData),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -154,23 +312,88 @@ function StableCreateForm({ onCreated }: { onCreated: () => void }) {
           </div>
           <div>
             <label className="block font-medium text-green-900 mb-1">Region</label>
-            <input name="region" value={form.region} onChange={handleChange} required className="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-green-400 bg-white/90 text-green-900" />
+            <select 
+              name="regionCode" 
+              value={form.regionCode} 
+              onChange={handleChange} 
+              required 
+              disabled={loadingRegions}
+              className="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-green-400 bg-white/90 text-green-900"
+            >
+              <option value="">{loadingRegions ? 'Loading regions...' : 'Select Region'}</option>
+              {regions.map(region => (
+                <option key={region.code} value={region.code}>
+                  {region.name}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block font-medium text-green-900 mb-1">Province</label>
-            <input name="province" value={form.province} onChange={handleChange} required className="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-green-400 bg-white/90 text-green-900" />
+            <select 
+              name="provinceCode" 
+              value={form.provinceCode} 
+              onChange={handleChange} 
+              required 
+              disabled={!form.regionCode || loadingProvinces}
+              className="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-green-400 bg-white/90 text-green-900"
+            >
+              <option value="">
+                {!form.regionCode ? 'Select Region first' : 
+                 loadingProvinces ? 'Loading provinces...' : 'Select Province'}
+              </option>
+              {provinces.map(province => (
+                <option key={province.code} value={province.code}>
+                  {province.name}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
-            <label className="block font-medium text-green-900 mb-1">City</label>
-            <input name="city" value={form.city} onChange={handleChange} required className="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-green-400 bg-white/90 text-green-900" />
+            <label className="block font-medium text-green-900 mb-1">City/Municipality</label>
+            <select 
+              name="cityCode" 
+              value={form.cityCode} 
+              onChange={handleChange} 
+              required 
+              disabled={!form.provinceCode || loadingCities}
+              className="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-green-400 bg-white/90 text-green-900"
+            >
+              <option value="">
+                {!form.provinceCode ? 'Select Province first' : 
+                 loadingCities ? 'Loading cities...' : 'Select City/Municipality'}
+              </option>
+              {cities.map(city => (
+                <option key={city.code} value={city.code}>
+                  {city.name}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block font-medium text-green-900 mb-1">Barangay</label>
-            <input name="barangay" value={form.barangay} onChange={handleChange} required className="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-green-400 bg-white/90 text-green-900" />
+            <select 
+              name="barangayCode" 
+              value={form.barangayCode} 
+              onChange={handleChange} 
+              required 
+              disabled={!form.cityCode || loadingBarangays}
+              className="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-green-400 bg-white/90 text-green-900"
+            >
+              <option value="">
+                {!form.cityCode ? 'Select City first' : 
+                 loadingBarangays ? 'Loading barangays...' : 'Select Barangay'}
+              </option>
+              {barangays.map(barangay => (
+                <option key={barangay.code} value={barangay.code}>
+                  {barangay.name}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
-            <label className="block font-medium text-green-900 mb-1">Street</label>
-            <input name="street" value={form.street} onChange={handleChange} required className="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-green-400 bg-white/90 text-green-900" />
+            <label className="block font-medium text-green-900 mb-1">Street Address</label>
+            <input name="street" value={form.street} onChange={handleChange} required className="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-green-400 bg-white/90 text-green-900" placeholder="Street, Building, House No." />
           </div>
         </div>
         <div>
