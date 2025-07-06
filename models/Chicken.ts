@@ -9,6 +9,7 @@ export interface ChickenAttributes {
   chickenId?: number;
   breederId: number;
   farmId?: number;
+  stableId?: number;
   bloodlineId?: number;
   status?: string;
   fatherId?: number | null;
@@ -19,6 +20,8 @@ export interface ChickenAttributes {
   legbandNo?: string;
   wingbandNo?: string;
   bloodline?: string;
+  color?: string;
+  legs?: string;
   pictures?: string[];
   description?: string;
   fightRecord?: string;
@@ -38,6 +41,7 @@ Chicken.init(
     chickenId: { type: DataTypes.INTEGER.UNSIGNED, autoIncrement: true, primaryKey: true },
     breederId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
     farmId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
+    stableId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
     bloodlineId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
     status: { type: DataTypes.STRING, allowNull: true, defaultValue: 'alive' },
     fatherId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
@@ -48,6 +52,8 @@ Chicken.init(
     legbandNo: { type: DataTypes.STRING, allowNull: true },
     wingbandNo: { type: DataTypes.STRING, allowNull: true },
     bloodline: { type: DataTypes.STRING, allowNull: true, defaultValue: 'Unknown' },
+    color: { type: DataTypes.STRING, allowNull: true },
+    legs: { type: DataTypes.STRING, allowNull: true },
     pictures: { type: DataTypes.JSON, allowNull: true },
     description: { type: DataTypes.TEXT, allowNull: true },
     fightRecord: { type: DataTypes.STRING, allowNull: true },

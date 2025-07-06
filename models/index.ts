@@ -24,6 +24,9 @@ Chicken.belongsTo(User, { foreignKey: 'breederId' });
 Farm.hasMany(Chicken, { foreignKey: 'farmId' });
 Chicken.belongsTo(Farm, { foreignKey: 'farmId' });
 
+Stable.hasMany(Chicken, { foreignKey: 'stableId' });
+Chicken.belongsTo(Stable, { foreignKey: 'stableId' });
+
 // Fix naming collision for bloodline association
 Bloodline.hasMany(Chicken, { foreignKey: 'bloodlineId', as: 'chickens' });
 Chicken.belongsTo(Bloodline, { foreignKey: 'bloodlineId', as: 'bloodlineRef' });

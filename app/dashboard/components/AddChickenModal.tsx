@@ -11,63 +11,63 @@ interface AddChickenModalProps {
   onClose: () => void;
   onSuccess: () => void;
   defaultBreederType?: 'breeder' | 'fighter';
+  forSale?: boolean;
 }
 
-export default function AddChickenModal({ isOpen, onClose, onSuccess, defaultBreederType }: AddChickenModalProps) {
+export default function AddChickenModal({ isOpen, onClose, onSuccess, defaultBreederType, forSale }: AddChickenModalProps) {
   const [formData, setFormData] = useState({
     name: '',
-    sire: '',
-    dam: '',
+    gender: 'rooster' as 'rooster' | 'hen',
     legbandNo: '',
     wingbandNo: '',
     bloodline: '',
-    bloodlineId: '',
-    gender: 'rooster' as 'rooster' | 'hen',
-    hatchDate: '',
-    breederType: defaultBreederType || '' as '' | 'breeder' | 'fighter',
-    status: 'alive' as 'alive' | 'dead',
-    forSale: false,
+    color: '',
+    legs: '',
     price: '',
-    isBreeder: defaultBreederType === 'breeder',
-    description: '',
-    fightRecord: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [uploadingImages, setUploadingImages] = useState(false);
-  const [images, setImages] = useState<string[]>([]);
   const [bloodlines, setBloodlines] = useState<Bloodline[]>([]);
   const [loadingBloodlines, setLoadingBloodlines] = useState(false);
   const [showCustomBloodline, setShowCustomBloodline] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [userRole, setUserRole] = useState<string>('');
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
 
-  // Fetch bloodlines when modal opens
+  // Fetch user info and bloodlines when modal opens
   useEffect(() => {
     if (isOpen) {
-      fetchBloodlines();
-      // Reset form with correct defaults
+      fetchUserInfo();
+      if (defaultBreederType === 'breeder' || userRole === 'breeder') {
+        fetchBloodlines();
+      }
+      // Reset form
       setFormData({
         name: '',
-        sire: '',
-        dam: '',
+        gender: 'rooster',
         legbandNo: '',
         wingbandNo: '',
         bloodline: '',
-        bloodlineId: '',
-        gender: 'rooster',
-        hatchDate: '',
-        breederType: defaultBreederType || '',
-        status: 'alive',
-        forSale: false,
+        color: '',
+        legs: '',
         price: '',
-        isBreeder: defaultBreederType === 'breeder',
-        description: '',
-        fightRecord: '',
       });
-      setImages([]);
       setShowCustomBloodline(false);
+      setUploadedImages([]);
     }
-  }, [isOpen, defaultBreederType]);
+  }, [isOpen, defaultBreederType, userRole]);
+
+  const fetchUserInfo = async () => {
+    try {
+      const response = await fetch('/api/auth/me');
+      if (response.ok) {
+        const data = await response.json();
+        setUserRole(data.user.role);
+      }
+    } catch (err) {
+      console.error('Failed to fetch user info:', err);
+    }
+  };
 
   const fetchBloodlines = async () => {
     try {
@@ -84,74 +84,88 @@ export default function AddChickenModal({ isOpen, onClose, onSuccess, defaultBre
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target;
-    if (type === 'checkbox') {
-      const checked = (e.target as HTMLInputElement).checked;
-      setFormData(prev => ({ ...prev, [name]: checked }));
-    } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
-    }
-
-    // Handle bloodline selection
-    if (name === 'bloodlineId') {
-      if (value === 'custom') {
-        setShowCustomBloodline(true);
-        setFormData(prev => ({ ...prev, bloodline: '', bloodlineId: '' }));
-      } else if (value === 'new') {
-        setShowCustomBloodline(true);
-        setFormData(prev => ({ ...prev, bloodline: '', bloodlineId: '' }));
-      } else {
-        setShowCustomBloodline(false);
-        const selectedBloodline = bloodlines.find(b => b.bloodlineId.toString() === value);
-        setFormData(prev => ({ 
-          ...prev, 
-          bloodline: selectedBloodline?.name || '',
-          bloodlineId: value 
-        }));
-      }
-    }
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d')!;
+      const img = new Image();
+      
+      img.onload = () => {
+        // Calculate new dimensions (max 800px width/height)
+        const maxSize = 800;
+        let { width, height } = img;
+        
+        if (width > height) {
+          if (width > maxSize) {
+            height = (height * maxSize) / width;
+            width = maxSize;
+          }
+        } else {
+          if (height > maxSize) {
+            width = (width * maxSize) / height;
+            height = maxSize;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        // Draw and compress
+        ctx.drawImage(img, 0, 0, width, height);
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        resolve(compressedDataUrl);
+      };
+      
+      img.src = URL.createObjectURL(file);
+    });
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-
+    
     setUploadingImages(true);
-    setError(null);
-
     try {
-      const uploadedUrls: string[] = [];
+      const compressedImages: string[] = [];
       
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        if (!file.type.startsWith('image/')) {
-          throw new Error('Only image files are allowed.');
+        if (file.type.startsWith('image/')) {
+          const compressedImage = await compressImage(file);
+          compressedImages.push(compressedImage);
         }
-
-        const formData = new FormData();
-        formData.append('file', file);
-        
-        const res = await fetch('/api/upload', { method: 'POST', body: formData });
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data?.error || 'Upload failed');
-        }
-        
-        const data = await res.json();
-        uploadedUrls.push(data.url);
       }
-
-      setImages(prev => [...prev, ...uploadedUrls]);
+      
+      setUploadedImages(prev => [...prev, ...compressedImages]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed');
+      setError('Failed to upload images');
     } finally {
       setUploadingImages(false);
     }
   };
 
   const removeImage = (index: number) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
+    setUploadedImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+
+    // Handle bloodline selection
+    if (name === 'bloodlineId') {
+      if (value === 'custom') {
+        setShowCustomBloodline(true);
+        setFormData(prev => ({ ...prev, bloodline: '' }));
+      } else {
+        setShowCustomBloodline(false);
+        const selectedBloodline = bloodlines.find(b => b.bloodlineId.toString() === value);
+        setFormData(prev => ({ 
+          ...prev, 
+          bloodline: selectedBloodline?.name || ''
+        }));
+      }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -159,28 +173,25 @@ export default function AddChickenModal({ isOpen, onClose, onSuccess, defaultBre
     setLoading(true);
     setError(null);
 
-    // Validate that at least one band number is provided
-    if (!formData.legbandNo && !formData.wingbandNo) {
-      setError('Please provide at least one band number (legband or wingband)');
-      setLoading(false);
-      return;
-    }
-
     try {
       const response = await fetch('/api/chickens', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          pictures: images,
-          price: formData.price ? parseFloat(formData.price) : null,
-          hatchDate: formData.hatchDate || null,
-          breederType: formData.breederType || null,
-          name: formData.name || null,
-          sire: formData.sire || null,
-          dam: formData.dam || null,
+          name: formData.name || null, // API will auto-assign if null
           legbandNo: formData.legbandNo || null,
           wingbandNo: formData.wingbandNo || null,
+          bloodline: formData.bloodline || 'Unknown',
+          color: formData.color || null,
+          legs: formData.legs || null,
+          price: formData.price ? parseFloat(formData.price) : null,
+          pictures: uploadedImages,
+          // Set defaults for required fields
+          status: 'alive',
+          forSale: forSale || false,
+          isBreeder: defaultBreederType === 'breeder',
+          breederType: defaultBreederType || 'breeder',
         }),
       });
 
@@ -192,24 +203,16 @@ export default function AddChickenModal({ isOpen, onClose, onSuccess, defaultBre
       // Reset form
       setFormData({
         name: '',
-        sire: '',
-        dam: '',
+        gender: 'rooster',
         legbandNo: '',
         wingbandNo: '',
         bloodline: '',
-        bloodlineId: '',
-        gender: 'rooster',
-        hatchDate: '',
-        breederType: '',
-        status: 'alive',
-        forSale: false,
+        color: '',
+        legs: '',
         price: '',
-        isBreeder: false,
-        description: '',
-        fightRecord: '',
       });
-      setImages([]);
       setShowCustomBloodline(false);
+      setUploadedImages([]);
       onSuccess();
       onClose();
     } catch (err) {
@@ -222,8 +225,8 @@ export default function AddChickenModal({ isOpen, onClose, onSuccess, defaultBre
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full border border-gray-200">
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-green-900">Add New Chicken</h2>
@@ -245,72 +248,40 @@ export default function AddChickenModal({ isOpen, onClose, onSuccess, defaultBre
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Basic Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 placeholder-gray-500"
-                  placeholder="Enter chicken name (optional)"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Gender *
-                </label>
-                <select
-                  name="gender"
-                  value={formData.gender}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
-                >
-                  <option value="rooster">Rooster</option>
-                  <option value="hen">Hen</option>
-                </select>
-              </div>
+            {/* Gender */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Gender *
+              </label>
+              <select
+                name="gender"
+                value={formData.gender}
+                onChange={handleInputChange}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
+              >
+                <option value="rooster">Rooster</option>
+                <option value="hen">Hen</option>
+              </select>
             </div>
 
-            {/* Parent Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Sire (Father)
-                </label>
-                <input
-                  type="text"
-                  name="sire"
-                  value={formData.sire}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 placeholder-gray-500"
-                  placeholder="Father's name/ID (optional)"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Dam (Mother)
-                </label>
-                <input
-                  type="text"
-                  name="dam"
-                  value={formData.dam}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 placeholder-gray-500"
-                  placeholder="Mother's name/ID (optional)"
-                />
-              </div>
+            {/* Name */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Name
+              </label>
+              <input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 placeholder-gray-500"
+                placeholder="Enter chicken name (optional - will auto-assign if empty)"
+              />
             </div>
 
             {/* Band Numbers */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Legband Number
@@ -321,7 +292,7 @@ export default function AddChickenModal({ isOpen, onClose, onSuccess, defaultBre
                   value={formData.legbandNo}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 placeholder-gray-500"
-                  placeholder="Enter legband number (optional)"
+                  placeholder="Legband #"
                 />
               </div>
 
@@ -335,241 +306,193 @@ export default function AddChickenModal({ isOpen, onClose, onSuccess, defaultBre
                   value={formData.wingbandNo}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 placeholder-gray-500"
-                  placeholder="Enter wingband number (optional)"
+                  placeholder="Wingband #"
                 />
               </div>
             </div>
 
-            {/* Band Number Help Text */}
-            <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-md">
-              <p><strong>Note:</strong> At least one band number (legband or wingband) is required. If neither is provided, a wingband number will be auto-assigned as "Palahian_[number]".</p>
-            </div>
-
-            {/* Bloodline Selection */}
+            {/* Bloodline */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Bloodline
               </label>
-              {loadingBloodlines ? (
-                <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500">
-                  Loading bloodlines...
-                </div>
+              {(defaultBreederType === 'breeder' || userRole === 'breeder') ? (
+                // Breeder: Dropdown with existing bloodlines + option to create new
+                <>
+                  {loadingBloodlines ? (
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500">
+                      Loading bloodlines...
+                    </div>
+                  ) : (
+                    <select
+                      name="bloodlineId"
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
+                    >
+                      <option value="">Select bloodline</option>
+                      {bloodlines.map((bloodline) => (
+                        <option key={bloodline.bloodlineId} value={bloodline.bloodlineId}>
+                          {bloodline.name}
+                        </option>
+                      ))}
+                      <option value="custom">Other (enter custom)</option>
+                    </select>
+                  )}
+                  
+                  {/* Custom Bloodline Input for Breeders */}
+                  {showCustomBloodline && (
+                    <div className="mt-2">
+                      <input
+                        type="text"
+                        name="bloodline"
+                        value={formData.bloodline}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 placeholder-gray-500"
+                        placeholder="Enter new bloodline name"
+                      />
+                    </div>
+                  )}
+                </>
               ) : (
-                <select
-                  name="bloodlineId"
-                  value={formData.bloodlineId}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
-                >
-                  <option value="">Select bloodline</option>
-                  {bloodlines.map((bloodline) => (
-                    <option key={bloodline.bloodlineId} value={bloodline.bloodlineId}>
-                      {bloodline.name}
-                    </option>
-                  ))}
-                  <option value="custom">Other (enter custom)</option>
-                  <option value="new">Create new bloodline</option>
-                </select>
-              )}
-            </div>
-
-            {/* Custom Bloodline Input */}
-            {showCustomBloodline && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Bloodline Name
-                </label>
+                // Fighter: Simple text field
                 <input
                   type="text"
                   name="bloodline"
                   value={formData.bloodline}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 placeholder-gray-500"
-                  placeholder="Enter bloodline name"
+                  placeholder="Enter bloodline (e.g., Hatch, Roundhead, etc.)"
                 />
-              </div>
-            )}
+              )}
+            </div>
 
-            {/* Classification */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Color and Legs */}
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Status
-                </label>
-                <select
-                  name="status"
-                  value={formData.status}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
-                >
-                  <option value="alive">Alive</option>
-                  <option value="dead">Dead</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Type
-                </label>
-                <select
-                  name="breederType"
-                  value={formData.breederType}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
-                >
-                  <option value="">Select type</option>
-                  <option value="breeder">Breeder</option>
-                  <option value="fighter">Fighter</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Hatch Date
+                  Color
                 </label>
                 <input
-                  type="date"
-                  name="hatchDate"
-                  value={formData.hatchDate}
+                  type="text"
+                  name="color"
+                  value={formData.color}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 placeholder-gray-500"
+                  placeholder="e.g., Red, Black, etc."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Legs
+                </label>
+                <input
+                  type="text"
+                  name="legs"
+                  value={formData.legs}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 placeholder-gray-500"
+                  placeholder="e.g., Yellow, White, etc."
                 />
               </div>
             </div>
 
-            {/* For Sale Section */}
-            <div className="border-t border-gray-200 pt-4">
-              <div className="flex items-center mb-4">
-                <input
-                  type="checkbox"
-                  name="forSale"
-                  checked={formData.forSale}
-                  onChange={handleInputChange}
-                  className="mr-2"
-                />
-                <span className="text-sm font-medium text-gray-700">For Sale</span>
-              </div>
-
-              {formData.forSale && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Price (₱)
-                  </label>
+            {/* Price Field - Only show if forSale is true */}
+            {forSale && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Price *
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2 text-gray-500">₱</span>
                   <input
                     type="number"
                     name="price"
                     value={formData.price}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 placeholder-gray-500"
-                    placeholder="0.00"
+                    required
                     min="0"
                     step="0.01"
+                    className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 placeholder-gray-500"
+                    placeholder="0.00"
                   />
                 </div>
-              )}
-            </div>
-
-            {/* Breeder Checkbox */}
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                name="isBreeder"
-                checked={formData.isBreeder}
-                onChange={handleInputChange}
-                className="mr-2"
-              />
-              <span className="text-sm text-gray-700">Is Breeder</span>
-            </div>
-
-            {/* Description */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Description
-              </label>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 placeholder-gray-500"
-                placeholder="Describe the chicken's characteristics, behavior, etc."
-              />
-            </div>
-
-            {/* Fight Record */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Fight Record
-              </label>
-              <input
-                type="text"
-                name="fightRecord"
-                value={formData.fightRecord}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 placeholder-gray-500"
-                placeholder="e.g., 5W-2L"
-              />
-            </div>
+              </div>
+            )}
 
             {/* Image Upload */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Images
               </label>
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="hidden"
-              />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingImages}
-                className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-md hover:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
-              >
-                {uploadingImages ? 'Uploading...' : 'Click to upload images'}
-              </button>
-              
-              {/* Image Preview */}
-              {images.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {images.map((url, index) => (
-                    <div key={index} className="relative">
-                      <img
-                        src={url}
-                        alt={`Preview ${index + 1}`}
-                        className="w-16 h-16 object-cover rounded border"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeImage(index)}
-                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
-                      >
-                        ×
-                      </button>
+              <div className="space-y-3">
+                {/* Upload Button */}
+                <div className="flex items-center justify-center w-full">
+                  <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      {uploadingImages ? (
+                        <div className="flex items-center">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600"></div>
+                          <span className="ml-2 text-sm text-gray-500">Processing...</span>
+                        </div>
+                      ) : (
+                        <>
+                          <svg className="w-8 h-8 mb-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                          </svg>
+                          <p className="text-sm text-gray-500">Click to upload images</p>
+                        </>
+                      )}
                     </div>
-                  ))}
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      multiple 
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      disabled={uploadingImages}
+                    />
+                  </label>
                 </div>
-              )}
+
+                {/* Uploaded Images Preview */}
+                {uploadedImages.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2">
+                    {uploadedImages.map((image, index) => (
+                      <div key={index} className="relative">
+                        <img
+                          src={image}
+                          alt={`Upload ${index + 1}`}
+                          className="w-full h-20 object-cover rounded-lg"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(index)}
+                          className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Submit Buttons */}
-            <div className="flex justify-end gap-3 pt-4">
+            {/* Submit Button */}
+            <div className="flex justify-end space-x-3 pt-4">
               <button
                 type="button"
                 onClick={onClose}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
                 disabled={loading}
-                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                disabled={loading}
                 className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
+                disabled={loading}
               >
                 {loading ? 'Adding...' : 'Add Chicken'}
               </button>

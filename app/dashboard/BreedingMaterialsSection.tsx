@@ -44,8 +44,10 @@ export default function BreedingMaterialsSection() {
       }
       const data = await response.json();
       
-      // Filter for breeders only
-      const breeders = (data.chickens || []).filter((chicken: Chicken) => chicken.isBreeder);
+      // Filter for breeders only (not archived)
+      const breeders = (data.chickens || []).filter((chicken: Chicken) => 
+        chicken.isBreeder && chicken.status === 'alive'
+      );
       
       setChickens(breeders);
     } catch (err) {

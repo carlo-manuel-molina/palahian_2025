@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Chicken, Farm, Bloodline, User, sequelize } from '../../../models';
+import { Chicken, Farm, Stable, Bloodline, User, sequelize } from '../../../models';
 import '../../../models'; // This ensures associations are loaded
 
-// GET /api/chickens - Get all chickens for the current breeder
+// GET /api/chickens - Get all chickens for the current user
 export async function GET(request: NextRequest) {
   try {
     // Get user from session
@@ -16,11 +16,28 @@ export async function GET(request: NextRequest) {
     
     const { user } = await authResponse.json();
     
-    // Get chickens for this breeder with related data
+    // Get chickens for this user with related data
+    let whereClause = {};
+    
+    if (user.role === 'fighter') {
+      // For fighters, get chickens from their stable
+      const stable = await Stable.findOne({ where: { userId: user.id } });
+      if (stable) {
+        whereClause = { stableId: stable.stableId };
+      } else {
+        // If no stable found, return empty array
+        return NextResponse.json({ chickens: [] });
+      }
+    } else {
+      // For breeders and sellers, get chickens by breederId
+      whereClause = { breederId: user.id };
+    }
+    
     const chickens = await Chicken.findAll({
-      where: { breederId: user.id },
+      where: whereClause,
       include: [
         { model: Farm, as: 'farm', attributes: ['farmId', 'name'] },
+        { model: Stable, as: 'stable', attributes: ['stableId', 'name'] },
         { model: Bloodline, as: 'bloodlineRef', attributes: ['bloodlineId', 'name'] },
         { 
           model: Chicken, 
@@ -69,13 +86,26 @@ export async function POST(request: NextRequest) {
     
     const body = await request.json();
 
-    console.log('Creating chicken for user:', user.id);
+    console.log('Creating chicken for user:', user.id, 'with role:', user.role);
     console.log('Request body:', body);
 
-    // Get user's farm
-    const farm = await Farm.findOne({ where: { userId: user.id } });
-    if (!farm) {
-      return NextResponse.json({ error: 'Farm not found' }, { status: 404 });
+    let farmId = null;
+    let stableId = null;
+
+    // Get user's farm or stable based on role
+    if (user.role === 'fighter') {
+      const stable = await Stable.findOne({ where: { userId: user.id } });
+      if (!stable) {
+        return NextResponse.json({ error: 'Stable not found. Please set up your stable first.' }, { status: 404 });
+      }
+      stableId = stable.stableId;
+    } else {
+      // For breeders and sellers, use farm
+      const farm = await Farm.findOne({ where: { userId: user.id } });
+      if (!farm) {
+        return NextResponse.json({ error: 'Farm not found' }, { status: 404 });
+      }
+      farmId = farm.farmId;
     }
 
     // Auto-assign band numbers if none provided
@@ -99,12 +129,27 @@ export async function POST(request: NextRequest) {
       legbandNo = 'n/a';
     }
 
+    // Auto-assign name if not provided
+    let chickenName = body.name;
+    if (!chickenName || chickenName.trim() === '') {
+      // Get the next available chicken ID for auto-assignment
+      const lastChicken = await Chicken.findOne({
+        where: { breederId: user.id },
+        order: [['chickenId', 'DESC']]
+      });
+
+      const nextId = lastChicken ? (lastChicken.get('chickenId') as number) + 1 : 1;
+      const genderPrefix = body.gender === 'hen' ? 'Hen' : 'Rooster';
+      chickenName = `${genderPrefix}_${nextId}`;
+    }
+
     // Prepare chicken data
     const chickenData = {
       ...body,
       breederId: user.id,
-      farmId: farm.farmId,
-      name: body.name || null,
+      farmId: farmId,
+      stableId: stableId,
+      name: chickenName,
       sire: body.sire || null,
       dam: body.dam || null,
       legbandNo: legbandNo || null,
@@ -115,13 +160,15 @@ export async function POST(request: NextRequest) {
       fightVideos: body.fightVideos || [],
       forSale: body.forSale || false,
       isBreeder: body.isBreeder || false,
-      breederType: body.breederType || null,
+      breederType: body.breederType || (user.role === 'fighter' ? 'fighter' : 'breeder'),
       status: body.status || 'alive',
       gender: body.gender,
       hatchDate: body.hatchDate || null,
       description: body.description || null,
       fightRecord: body.fightRecord || null,
       price: body.price ? parseFloat(body.price) : null,
+      color: body.color || null,
+      legs: body.legs || null,
     };
 
     console.log('Chicken data to create:', chickenData);

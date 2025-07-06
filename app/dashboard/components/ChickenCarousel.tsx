@@ -86,11 +86,11 @@ export default function ChickenCarousel({ title, chickens, onUpdate }: ChickenCa
         {/* Scrollable Container */}
         <div
           ref={scrollContainerRef}
-          className="flex gap-4 overflow-x-auto scrollbar-hide px-4 py-2"
+          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 overflow-x-auto scrollbar-hide px-4 py-2"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {chickens.map((chicken) => (
-            <div key={chicken.chickenId} className="flex-shrink-0 w-64">
+            <div key={chicken.chickenId} className="h-full">
               <ChickenCard chicken={chicken} onUpdate={onUpdate} />
             </div>
           ))}

@@ -2,8 +2,9 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Cookies from 'js-cookie';
+import { getDefaultDashboardPage, type UserRole } from '@/lib/permissions';
 
-const roles = ["breeder", "fighter", "seller", "shipper", "buyer"];
+const roles = ["breeder", "fighter", "seller", "shipper", "buyer", "gaffer"];
 
 export default function AuthPage() {
   const searchParams = useSearchParams();
@@ -34,7 +35,19 @@ export default function AuthPage() {
     const token = Cookies.get('token');
     const lastPage = localStorage.getItem('lastPage');
     if (token) {
-      router.replace(lastPage || '/dashboard');
+      // Fetch user info to determine correct redirect
+      fetch('/api/auth/me').then(async res => {
+        if (res.ok) {
+          const data = await res.json();
+          const defaultPage = getDefaultDashboardPage(data.user.role as UserRole);
+          // Only redirect to the defaultPage, never to /dashboard
+          router.replace(lastPage || defaultPage);
+        } else {
+          router.replace(lastPage || '/search');
+        }
+      }).catch(() => {
+        router.replace(lastPage || '/search');
+      });
     }
   }, [router]);
 
@@ -69,12 +82,12 @@ export default function AuthPage() {
       if (!res.ok) throw new Error(data.error || "Login failed");
       // No need to store token in localStorage, it's in cookie now
       const lastPage = localStorage.getItem('lastPage');
-      if (data.user && data.user.role === 'fighter') {
-        router.replace('/stable');
-      } else if (data.user && data.user.role === 'breeder') {
-        router.replace('/dashboard');
+      if (data.user) {
+        const defaultPage = getDefaultDashboardPage(data.user.role as UserRole);
+        // Only redirect to the defaultPage, never to /dashboard
+        router.replace(lastPage || defaultPage);
       } else {
-        router.replace(lastPage || '/dashboard');
+        router.replace(lastPage || '/dashboard/sale');
       }
     } catch (err: unknown) {
       const error = err as Error;

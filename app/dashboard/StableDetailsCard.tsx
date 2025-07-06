@@ -6,8 +6,8 @@ const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapCo
 const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false });
 const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false });
 
-type FarmDetailsCardProps = {
-  farm: {
+type StableDetailsCardProps = {
+  stable: {
     name: string;
     owner: string;
     region: string;
@@ -21,11 +21,11 @@ type FarmDetailsCardProps = {
   };
 };
 
-export default function FarmDetailsCard({ farm }: FarmDetailsCardProps) {
+export default function StableDetailsCard({ stable }: StableDetailsCardProps) {
   // Parse coordinates from mapPin if present
   let coords: [number, number] | null = null;
-  if (farm.mapPin && /^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/.test(farm.mapPin.trim())) {
-    const [lat, lon] = farm.mapPin.split(',').map(Number);
+  if (stable.mapPin && /^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/.test(stable.mapPin.trim())) {
+    const [lat, lon] = stable.mapPin.split(',').map(Number);
     coords = [lat, lon];
   }
 
@@ -44,7 +44,7 @@ export default function FarmDetailsCard({ farm }: FarmDetailsCardProps) {
     }
     setLoading(true);
     setError('');
-    const address = `${farm.street}, ${farm.barangay}, ${farm.city}, ${farm.province}, ${farm.region}, Philippines`;
+    const address = `${stable.street}, ${stable.barangay}, ${stable.city}, ${stable.province}, ${stable.region}, Philippines`;
     fetch(`/api/geocode?q=${encodeURIComponent(address)}`)
       .then(res => res.json())
       .then(data => {
@@ -60,26 +60,26 @@ export default function FarmDetailsCard({ farm }: FarmDetailsCardProps) {
         setError('Failed to fetch map location.');
       })
       .finally(() => setLoading(false));
-  }, [farm, coords, showMap]);
+  }, [stable, coords, showMap]);
 
   const mapToShow = coords || geoCoords;
 
   return (
-    <div className="w-full max-w-full sm:max-w-xl mx-auto bg-orange-50/90 border border-orange-200 rounded-xl shadow-lg p-4 sm:p-6 mb-4 sm:mb-6 backdrop-blur-md">
-      <h2 className="text-lg sm:text-2xl font-bold text-orange-900 mb-2">Farm Details</h2>
-      <div className="text-orange-900 text-base sm:text-lg mb-1"><span className="font-semibold">Farm Name:</span> {farm.name}</div>
-      <div className="text-orange-900 text-base sm:text-lg mb-1"><span className="font-semibold">Farm Owner:</span> {farm.owner}</div>
-      <div className="text-orange-900 text-base sm:text-lg mb-1"><span className="font-semibold">Address:</span> {farm.street}, {farm.barangay}, {farm.city}, {farm.province}, {farm.region}, Philippines</div>
-      {farm.mapPin && (
-        <div className="text-orange-900 text-base sm:text-lg mb-1">
-          <span className="font-semibold">Google Maps Link:</span> <a href={farm.mapPin} target="_blank" rel="noopener noreferrer" className="text-blue-700 underline break-all">{farm.mapPin}</a>
+    <div className="w-full max-w-full sm:max-w-xl mx-auto bg-stone-50/90 border border-stone-200 rounded-xl shadow-lg p-4 sm:p-6 mb-4 sm:mb-6 backdrop-blur-md">
+      <h2 className="text-lg sm:text-2xl font-bold text-stone-900 mb-2">Stable Details</h2>
+      <div className="text-stone-900 text-base sm:text-lg mb-1"><span className="font-semibold">Stable Name:</span> {stable.name}</div>
+      <div className="text-stone-900 text-base sm:text-lg mb-1"><span className="font-semibold">Stable Owner:</span> {stable.owner}</div>
+      <div className="text-stone-900 text-base sm:text-lg mb-1"><span className="font-semibold">Address:</span> {stable.street}, {stable.barangay}, {stable.city}, {stable.province}, {stable.region}, Philippines</div>
+      {stable.mapPin && (
+        <div className="text-stone-900 text-base sm:text-lg mb-1">
+          <span className="font-semibold">Google Maps Link:</span> <a href={stable.mapPin} target="_blank" rel="noopener noreferrer" className="text-blue-700 underline break-all">{stable.mapPin}</a>
         </div>
       )}
-      <div className="text-orange-900 text-base sm:text-lg mb-1"><span className="font-semibold">Farm Email:</span> {farm.email}</div>
-      {farm.description && <div className="text-orange-900 text-base sm:text-lg"><span className="font-semibold">Description:</span> {farm.description}</div>}
+      <div className="text-stone-900 text-base sm:text-lg mb-1"><span className="font-semibold">Stable Email:</span> {stable.email}</div>
+      {stable.description && <div className="text-stone-900 text-base sm:text-lg"><span className="font-semibold">Description:</span> {stable.description}</div>}
       <div className="mt-4">
         <button
-          className="text-orange-700 underline hover:text-orange-900 font-semibold focus:outline-none"
+          className="text-stone-700 underline hover:text-stone-900 font-semibold focus:outline-none"
           onClick={() => setShowMap(v => !v)}
         >
           {showMap ? 'Hide Map' : 'Show Map'}
@@ -88,7 +88,7 @@ export default function FarmDetailsCard({ farm }: FarmDetailsCardProps) {
       {showMap && (
         <div className="w-full h-48 sm:h-64 rounded overflow-hidden mt-4">
           {loading ? (
-            <div className="text-center text-orange-900">Loading map...</div>
+            <div className="text-center text-stone-900">Loading map...</div>
           ) : error ? (
             <div className="text-center text-red-700">{error}</div>
           ) : mapToShow ? (

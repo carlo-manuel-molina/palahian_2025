@@ -3,11 +3,17 @@ import React, { useRef, useState } from 'react';
 export default function FarmBanner({
   userName,
   farmName,
+  stableName,
+  entityName,
+  userType,
   bannerUrl,
   onBannerChange,
 }: {
   userName: string;
-  farmName: string;
+  farmName?: string;
+  stableName?: string;
+  entityName?: string;
+  userType: 'breeder' | 'fighter';
   bannerUrl?: string;
   onBannerChange?: (url: string) => void;
 }) {
@@ -15,6 +21,14 @@ export default function FarmBanner({
   const [currentBanner, setCurrentBanner] = useState(bannerUrl || '/gamefowl-farm.jpg');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState('');
+
+  // Determine the display name based on user type and available props
+  const displayName = entityName || (userType === 'breeder' 
+    ? (farmName || 'Your Farm')
+    : (stableName || 'Your Stable'));
+
+  // Determine the API endpoint based on user type
+  const apiEndpoint = userType === 'breeder' ? '/api/farm' : '/api/stable';
 
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -38,9 +52,9 @@ export default function FarmBanner({
       if (!res.ok) throw new Error(data?.error || 'Upload failed');
       setCurrentBanner(data.url);
       if (onBannerChange) onBannerChange(data.url);
-      // Persist bannerUrl to farm
+      // Persist bannerUrl to farm or stable
       try {
-        const updateRes = await fetch('/api/farm', {
+        const updateRes = await fetch(apiEndpoint, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ bannerUrl: data.url }),
@@ -63,19 +77,19 @@ export default function FarmBanner({
     <div className="relative w-full max-w-xl mx-auto rounded-xl overflow-hidden shadow-lg mb-6">
       <img
         src={currentBanner}
-        alt="Farm Banner"
+        alt={userType === 'breeder' ? 'Farm Banner' : 'Stable Banner'}
         className="w-full h-40 sm:h-56 object-cover"
       />
       {/* Overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-4">
-        <div className="text-white text-xl sm:text-2xl font-bold drop-shadow mb-1">{farmName}</div>
+        <div className="text-white text-xl sm:text-2xl font-bold drop-shadow mb-1">{displayName}</div>
         <div className="text-white text-base sm:text-lg drop-shadow mb-2">Welcome, {userName}!</div>
       </div>
       {/* Camera icon button */}
       <button
         className="absolute top-3 right-3 bg-white/80 hover:bg-white rounded-full p-2 shadow focus:outline-none focus:ring-2 focus:ring-green-400"
         onClick={() => fileInputRef.current?.click()}
-        aria-label="Change banner image"
+        aria-label={`Change ${userType === 'breeder' ? 'farm' : 'stable'} banner image`}
         disabled={uploading}
         type="button"
       >

@@ -44,9 +44,9 @@ export default function BattleCrossesPage() {
       }
       const data = await response.json();
       
-      // Filter for fighter roosters only
+      // Filter for fighter roosters only (not archived)
       const fighterRoosters = (data.chickens || []).filter((chicken: Chicken) => 
-        chicken.gender === 'rooster' && chicken.breederType === 'fighter'
+        chicken.gender === 'rooster' && chicken.breederType === 'fighter' && chicken.status === 'alive'
       );
       
       setChickens(fighterRoosters);
